@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timedelta
 import re
 
-# ============================== # CONFIGURAÇÕES GLOBAIS # ==============================
+
 PALAVRAS_FECHAMENTO = [
     "Pode sim", "Segue o pix.", 
     "pode fazer sim", "comprovante", "Sua placa está pronta", "Olá, sua placa esta pronta", "O rapaz está a caminho", "o rapaz está a caminho", "Assim que estiver a caminho avisamos", "Te aviso assim que estiver a caminho, pode ser?", "Assim que estiver pronta eu aviso", "Assim que estiver pronta", "Olá, sua placa esta pronta","Pode fazer", "Quando fica pronto?", "Fica pronta quando?", "Fica pronta hoje?","O rapaz está a caminho!!",
@@ -19,13 +19,13 @@ PALAVRAS_FECHAMENTO = [
 
 ]
 
-# ============================== # GOOGLE SHEETS # ==============================
+
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
 client = gspread.authorize(creds)
 planilha = client.open("ClientesTB").sheet1
 
-# ============================== # CONFIGURAÇÃO DO CHROME # ==============================
+
 options = Options()
 options.add_argument(r"user-data-dir=C:\whatsapp-bot")
 options.add_argument("--remote-debugging-port=9222")
@@ -33,7 +33,7 @@ options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--start-maximized")
 
-# ============================== # FUNÇÕES AUXILIARES # ==============================
+
 def calcular_tempo(texto):
     agora = datetime.now()
     try:
@@ -76,12 +76,12 @@ def cliente_ja_fechou(driver):
         print(f"Erro ao verificar fechamento: {e}")
         return False
 
-# ============================== # EXTRAÇÃO DE TELEFONE - VERSÃO CORRIGIDA 2026 # ==============================
+
 def extrair_telefone(driver):
     print("🔍 [EXTRAÇÃO TELEFONE] Iniciando...")
     telefone = None
 
-    # === 1. TENTATIVA RÁPIDA: Número direto no cabeçalho ===
+    
     try:
         header_xpaths = [
             '//div[@id="main"]//header//span[contains(@class, "selectable-text")]',
@@ -107,14 +107,14 @@ def extrair_telefone(driver):
 
     print(" → Não encontrou no cabeçalho. Tentando abrir perfil...")
 
-    # === 2. ABRIR PERFIL E BUSCAR TELEFONE ===
+    
     try:
-        # Fecha painéis abertos
+        
         for _ in range(4):
             driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
             time.sleep(0.7)
 
-        # Tentativas de clique no header
+        
         click_xpaths = [
             '//div[@id="main"]//header//div[@role="button"]',
             '//div[@id="main"]//header//img',
@@ -144,7 +144,7 @@ def extrair_telefone(driver):
             print("❌ Não foi possível abrir o painel do perfil")
             return None
 
-        # Procura o telefone no painel lateral (seletores mais atualizados)
+        
         phone_xpaths = [
             '//span[contains(text(), "+55")]',
             '//div[contains(text(), "+55")]',
@@ -183,7 +183,7 @@ def extrair_telefone(driver):
     print("⚠️ Não foi possível extrair o telefone desta conversa.")
     return None
 
-# ============================== # LOOP PRINCIPAL CORRIGIDO # ==============================
+
 try:
     driver = webdriver.Chrome(options=options)
     driver.get("https://web.whatsapp.com")
@@ -205,14 +205,14 @@ try:
 
             while processed < max_conversas:
                 try:
-                    # REFAZ A LISTA DE CONVERSAS A CADA ITERAÇÃO
+                    
                     conversas = driver.find_elements(By.XPATH, '//div[@id="pane-side"]//div[contains(@class,"_ak8l")]')
                     
                     if processed >= len(conversas):
                         print("Não há mais conversas visíveis.")
                         break
 
-                    # Scroll para carregar mais conversas
+                    
                     if processed > 0 and processed % 15 == 0:
                         try:
                             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", conversas[processed-1])
@@ -222,11 +222,10 @@ try:
 
                     conversa_atual = conversas[processed]
 
-                    # Reset antes de clicar
                     driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
                     time.sleep(0.8)
 
-                    # Ignorar grupos
+                    
                     try:
                         grupo_indicator = conversa_atual.find_element(By.XPATH, './/span[contains(@data-testid, "group") or contains(text(), "grupo")]')
                         if grupo_indicator:
@@ -236,7 +235,7 @@ try:
                     except:
                         pass
 
-                    # Ignorar contatos salvos
+                    
                     try:
                         saved_contact = conversa_atual.find_element(By.XPATH, './/span[contains(@title, "✓") or contains(@data-testid, "verified")]')
                         if saved_contact:
@@ -250,7 +249,7 @@ try:
                     conversa_atual.click()
                     time.sleep(3.8)
 
-                    # Verifica se já fechou
+                    
                     if cliente_ja_fechou(driver):
                         print(f"→ Ignorando cliente (já fechou o negócio)\n")
                         processed += 1
@@ -262,7 +261,7 @@ try:
                         processed += 1
                         continue
 
-                    # Extrai tempo da última mensagem
+                    
                     tempo_texto = "00:00"
                     try:
                         spans = conversa_atual.find_elements(By.XPATH, './/span')
@@ -274,7 +273,8 @@ try:
                     except:
                         pass
 
-                    # Define status
+                    
+                    
                     horas = calcular_tempo(tempo_texto)
                     if horas < 3:
                         status = "VERDE"
@@ -286,7 +286,7 @@ try:
                         status = "VERMELHO"
                         acao = "Entrar em contato AGORA"
 
-                    # Atualiza ou adiciona na planilha
+                    
                     norm = normalize_phone(telefone)
                     if norm in phones_in_sheet:
                         idx = phones_in_sheet[norm]
